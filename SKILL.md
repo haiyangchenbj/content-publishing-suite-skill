@@ -1,5 +1,24 @@
 ---
 name: content-publishing-suite
+slug: content-publishing-suite-skill
+displayName: Content Publishing Suite
+description: >
+  Turn a fact-checked and compliance-approved final Markdown draft into multi-channel publishing assets — WeChat article, LinkedIn post, standalone responsive HTML, and an archive ledger. It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish. Trigger keywords: publish to multiple channels, WeChat article, LinkedIn post, archive ledger, 发布套件, 多渠道发布, 微信排版, 内容归档.
+description_zh: 内容发布套件
+description_en: Content publishing suite
+version: "1.1.2"
+agent_created: true
+read_when:
+  - "publish to multiple channels"
+  - "WeChat article"
+  - "LinkedIn post"
+  - "archive ledger"
+  - "发布套件"
+  - "多渠道发布"
+  - "微信排版"
+  - "内容归档"
+---
+name: content-publishing-suite
 description: Turn a fact-checked and compliance-approved final Markdown draft into multi-channel publishing assets — WeChat article, LinkedIn post, standalone responsive HTML, and an archive ledger. It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish.
 description_zh: 内容发布套件
 description_en: Content publishing suite
