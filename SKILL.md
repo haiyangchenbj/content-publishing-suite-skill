@@ -1,145 +1,125 @@
 ---
 name: content-publishing-suite
-slug: content-publishing-suite-skill
-displayName: Content Publishing Suite
-description: >
-  Turn a fact-checked and compliance-approved final Markdown draft into multi-channel publishing assets — WeChat article, LinkedIn post, standalone responsive HTML, and an archive ledger. It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish. Trigger keywords: publish to multiple channels, WeChat article, LinkedIn post, archive ledger, 发布套件, 多渠道发布, 微信排版, 内容归档.
-description_zh: 内容发布套件
-description_en: Content publishing suite
-version: "1.1.2"
-agent_created: true
-read_when:
-  - "publish to multiple channels"
-  - "WeChat article"
-  - "LinkedIn post"
-  - "archive ledger"
-  - "发布套件"
-  - "多渠道发布"
-  - "微信排版"
-  - "内容归档"
----
-name: content-publishing-suite
-description: Turn a fact-checked and compliance-approved final Markdown draft into multi-channel publishing assets — WeChat article, LinkedIn post, standalone responsive HTML, and an archive ledger. It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish.
+description: This skill should be used when a fact-checked and compliance-approved final Markdown draft needs to be turned into multi-channel publishing assets — WeChat article (135-editor-compatible inline HTML), LinkedIn post, standalone responsive HTML page, and an archive ledger (local record plus optional Notion entry). It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish. Can optionally pair with a dedicated WeChat-layout skill if one is installed. Trigger keywords: 发布物料, 排版并入库, 多平台发布, 定稿发到微信, publishing suite, multi-channel publish, final draft to WeChat/LinkedIn, package for publishing.
 description_zh: 内容发布套件
 description_en: Content publishing suite
 version: 1.1.1
-disable: false
 agent_created: true
 ---
 
 # Content Publishing Suite
 
-Convert a **reviewed, approved final draft** into multi-channel publishing assets and generate an archive ledger. This skill is the publishing-orchestration layer — it does not repeat fact-checking, originality review, or cross-material auditing (those are upstream skills), and it never performs any external publish action automatically.
+将一篇**已审核定稿**稳定转换为多个渠道的发布物料，并生成入库记录。本 Skill 是发布编排层，不做事实核验、原创性复核或跨材料审计（那些由上游 Skill 负责），也不自动执行任何外部发布动作。
 
-> In this document `{SKILL_DIR}` is replaced automatically with the skill's actual install path.
+> 本文档中 `{SKILL_DIR}` 自动替换为 Skill 实际安装路径。
 
 ## When to use
 
-- The user has a final draft that passed final check (`07-final.md` from `industry-deep-dive-pipeline`, or an equivalent Markdown explicitly marked "已审核 / reviewed"), and wants WeChat / LinkedIn / standalone HTML / archive assets.
-- The user asks to "publish this to multiple platforms", "generate a publish package", or "lay out and archive".
+- 用户拥有一篇已通过终检的定稿（industry-deep-dive-pipeline 的 `07-final.md`，或显式标记「已审核」的等价 Markdown），要求产出微信 / LinkedIn / 独立 HTML / 入库物料。
+- 用户要求"把这篇发到多个平台""生成发布包""排版并归档"。
 
 ## Do not use
 
-- Content that has not completed fact-checking or compliance review → run `industry-deep-dive-pipeline` / `claim-to-source-auditor` / `cross-material-consistency-auditor` first.
-- Pure WeChat layout with a dedicated WeChat-layout skill already installed, or an existing platform drafting flow → use that tool directly; this suite is unnecessary.
-- Writing new body text, rewriting, or adding facts → that belongs to the writing / verification stage, not publishing orchestration.
+- 内容尚未完成事实核验或合规审核 → 先走 industry-deep-dive-pipeline / claim-to-source-auditor / cross-material-consistency-auditor。
+- 只需要单纯的微信排版且本地已安装专门的微信排版 Skill / 已有平台建稿流程 → 直接用该工具即可，无需本套件。
+- 需要新写正文、改写或补充事实 → 属于写作/核验环节，不属于发布编排。
 
 ## Input
 
 ```yaml
 draft:
-  path:                     # reviewed final Markdown
+  path:                     # 已审核定稿 Markdown
   title:
   author:
   date:
-approval_gate:              # one of these must be satisfied
-  final_check_json:         # product of industry-deep-dive-pipeline; needs Gate B approved, red-line hits 0, credential/privacy P0 0
-  reviewed_marker: false    # or draft header carries `状态: 已审核` / `reviewed: true` AND user confirms
+approval_gate:              # 必须满足其一
+  final_check_json:         # industry-deep-dive-pipeline 产物；需 Gate B approved、red-line hits 0、credential/privacy P0 0
+  reviewed_marker: false    # 或定稿首部带 `状态: 已审核` / `reviewed: true` 且用户确认
 channels: [wechat, linkedin, html, archive]
 output_dir:
-external_action: dry-run    # default: generate only, do not send
-read_only_upstream: true    # do not introduce new facts not covered upstream
+external_action: dry-run    # 默认只生成不发送
+read_only_upstream: true    # 不引入上游未覆盖的新事实
 ```
 
-One of the two gates must be satisfied, otherwise refuse to enter:
+必须满足其一，否则拒绝进入：
 
-1. Provide `final-check.json` (product of `industry-deep-dive-pipeline`) with `Gate B: approved`, `red-line hits: 0`, `credential/privacy P0: 0`; or
-2. The final draft header carries an explicit `状态: 已审核` or `reviewed: true` marker, AND the user confirms "已审核" in the request.
+1. 提供 `final-check.json`（industry-deep-dive-pipeline 产物）且 `Gate B: approved`、`red-line hits: 0`、`credential/privacy P0: 0`；或
+2. 定稿文件首部带有显式 `状态: 已审核` 或 `reviewed: true` 标记，并由用户在请求中确认"已审核"。
 
-If the downstream introduces any **new fact** not covered upstream, pause and prompt to roll back to upstream for re-verification — never publish silently.
+下游若引入任何上游未覆盖的**新事实**，必须暂停并提示回退上游重新核验，不得静默发布。
 
 ## Output channels
 
-| Channel | Artifact | Notes |
-|---------|----------|-------|
-| WeChat | `wechat_snippet.html` (paste-ready fragment) + `wechat_preview.html` (mobile-frame preview) | 135-editor-compatible inline styles; does not auto-create draft |
-| LinkedIn | `linkedin-post.md` | hook + body + 3–5 hashtags; Chinese/English by target audience |
-| Standalone HTML | `standalone.html` | responsive single page with TOC and reference links |
-| Archive | `archive-ledger.json` (local) + optional Notion entry | title/channel/time/status; optional page-ID write with readback |
+| 渠道 | 产物 | 说明 |
+|------|------|------|
+| 微信 | `wechat_snippet.html`（可粘贴片段）+ `wechat_preview.html`（手机框预览） | 135 编辑器兼容内联样式；不自动建草稿 |
+| LinkedIn | `linkedin-post.md` | hook + 正文 + 3-5 话题标签；中/英按目标读者 |
+| 独立 HTML | `standalone.html` | 响应式单页，含目录与参考链接 |
+| 入库 | `archive-ledger.json`（本地）+ 可选 Notion 记录 | 标题/渠道/时间/状态；可选 page ID 写入并回读 |
 
 ## Workflow
 
 ```
-ingest final draft → input gate → generate per-channel assets → output gate (script validation) → package-manifest → archive ledger → external-action gate (confirm before send)
+摄入定稿 → 输入门禁 → 逐渠道生成物料 → 输出门禁（脚本校验）→ 生成 package-manifest → 入库台账 → 外部动作门禁（需确认才发送）
 ```
 
 ### Step 1: [Deterministic + LLM] Ingest and input gate
 
-Read the final draft Markdown and confirm the input gate is satisfied. Record title, author, date, and core judgment. Stop immediately if the gate fails.
+读取定稿 Markdown，确认满足输入门禁。记录标题、作者、日期、核心判断。未通过门禁立即停止。
 
 ### Step 2: [LLM] Generate per-channel assets
 
-- **WeChat**: per `references/wechat-style.md`, convert Markdown to fully-inline `<section>` HTML. Title 22px centered, subhead 17px bold `#1a3a5c`, body 16px / line-height 1.8 / `#333`, key sentences `<strong style="color:#1a3a5c;">`, table with dark-blue header + white text + zebra rows. Must end with `<v2></v2>`. Never use `<style>`, `<script>`, external class, or an outer `<div>` container. Template: `templates/wechat-snippet.html`.
-- **LinkedIn**: per `templates/linkedin-post.md`, take the core judgment as the hook, compress body to 200–300 words, end with 3–5 hashtags. No Markdown, no internal notes, no unpublished data, no process meta.
-- **Standalone HTML**: per `templates/standalone.html`, generate a responsive single page with title/author/date/TOC/body/reference links. Flat-fill style, generous whitespace, **absolutely no tech-circuit motifs, glow, or digital-grid patterns**.
-- **Archive ledger**: append one record to `archive-ledger.json` (create if missing); fields per `templates/archive-record.json`.
+- **微信**：依 `references/wechat-style.md` 将 Markdown 转为全内联 `<section>` HTML。标题 22px 居中、小标题 17px 加粗 `#1a3a5c`、正文 16px / 行高 1.8 / `#333`、关键句 `<strong style="color:#1a3a5c;">`、表格深蓝表头白字 + 斑马纹。文末必须加 `<v2></v2>`。绝不使用 `<style>`、`<script>`、外联 class、外层 `<div>` 容器。模板见 `templates/wechat-snippet.html`。
+- **LinkedIn**：依 `templates/linkedin-post.md`，取核心判断作 hook，正文压缩到 200-300 字，末尾 3-5 个话题标签。无 Markdown、无内部备注、无未公开数据、无流程元信息。
+- **独立 HTML**：依 `templates/standalone.html`，生成响应式单页，含标题/作者/日期/目录/正文/参考链接。平涂风格、大量留白、**绝对排除科技电路风、发光、数字网格**。
+- **入库台账**：追加一条记录到 `archive-ledger.json`（不存在则新建），字段见 `templates/archive-record.json`。
 
 ### Step 3: [Deterministic] Output gate (script validation)
 
-Run the deterministic script to verify each channel file meets its format contract:
+运行确定性脚本校验每个渠道文件是否满足格式合约：
 
 ```bash
 python3 {SKILL_DIR}/scripts/validate_publish_output.py --package <output_dir> --enforce
 ```
 
-P0 blocks (e.g. WeChat missing `<section>`/`<v2>`, contains `<script>`, HTML without structure, ledger missing fields); P1 warnings (e.g. LinkedIn too long). Exit code 2 means a P0 exists. The author's internal pen-name list is passed via the `PUBLISH_PEN_NAMES` environment variable (comma-separated), never hardcoded.
+P0 阻断（如微信缺 `<section>`/`<v2>`、含 `<script>`、HTML 无结构、台账缺字段）；P1 提示（如 LinkedIn 超长）。脚本退出码 2 表示存在 P0。作者内部笔名清单通过环境变量 `PUBLISH_PEN_NAMES`（逗号分隔）传入，不硬编码。
 
 ### Step 4: [Deterministic] Package and ledger
 
 ```bash
 python3 {SKILL_DIR}/scripts/build_publish_package.py \
-  --draft <final.md> \
-  --approved-gate <final-check.json or --approved flag> \
+  --draft <定稿.md> \
+  --approved-gate <final-check.json 或 --approved 标志> \
   --channels wechat,linkedin,html,archive \
   --output <output_dir>
 ```
 
-The script produces each channel file, updates `archive-ledger.json`, and outputs `package-manifest.json`.
+脚本产出各渠道文件、更新 `archive-ledger.json`、输出 `package-manifest.json`。
 
 ### Step 5: [Human] External-action gate
 
-Before any actual push, article-platform draft creation, or Notion write, **list the targets and obtain user confirmation**. Default is generate-only (`--dry-run`). Execute only after confirmation, and always read back to verify after writing (Notion uses page-ID writes, idempotency key prevents duplicates).
+任何实际推送、经文章管理平台建草稿、写 Notion 的动作前，**必须列出目标并取得用户确认**。默认只生成不发送（`--dry-run`）。确认后才执行，且写后必须回读核验（Notion 用 page ID 写入、幂等键防重复）。
 
 ## Hard Rules
 
-1. Refuse to enter if the input gate is not satisfied (no `final-check.json` approved, no explicit "已审核" marker) — never substitute for upstream verification.
-2. Zero conversation traces, zero process meta, zero internal notes / pen-names / unauthorized data in any publish asset.
-3. WeChat assets must be fully inline-styled, wrapped in `<section>`, and end with `<v2></v2>`; forbid `<style>`/`<script>`/external class/outer `<div>`.
-4. Use the real name or neutral phrasing for any person in working docs and publish assets; the author's internal pen-name is read from `PUBLISH_PEN_NAMES` for blocking only, never hardcoded into this skill.
-5. Any external action (push, draft creation, Notion write) defaults to `--dry-run`; list targets and get user confirmation first; read back after writing.
-6. Credentials come only from environment variables (Notion uses `NOTION_TOKEN`, database ID uses `NOTION_DB_ID`; article platforms via their existing MCP/connectors) — never hardcoded.
-7. Scripts only read the user-specified final draft and write to the user-specified output directory; no network egress.
+1. 未通过输入门禁（无 `final-check.json` approved 或无显式"已审核"标记）一律拒绝进入，不得代替上游做核验。
+2. 发布物料中零对话痕迹、零流程元信息、零内部备注/笔名/未授权数据。
+3. 微信物料必须全内联样式、`<section>` 包裹、文末带 `<v2></v2>`；禁止 `<style>`/`<script>`/外联 class/外层 `<div>`。
+4. 工作文档与发布物中人名一律用真实姓名或中性表达；作者内部笔名从 `PUBLISH_PEN_NAMES` 读取用于拦截，不硬编码进本 Skill。
+5. 任何外部动作（推送、建草稿、写 Notion）默认 `--dry-run`，必须先列目标并取得用户确认；写后必须回读核验。
+6. 凭据只走环境变量（Notion 用 `NOTION_TOKEN`、库 ID 用 `NOTION_DB_ID`；文章管理平台经既有 MCP/连接器），绝不硬编码。
+7. 脚本只读取用户指定的定稿、写入用户指定的输出目录；不引入网络外送。
 
 ## Failure Handling
 
 | Scenario | Action |
 |---|---|
-| Input gate not satisfied | Stop; list missing items, prompt to finish upstream verification |
-| Output gate hits P0 (exit code 2) | Do not generate manifest; list each P0 and its file, fix and re-run |
-| Downstream finds a new fact not covered upstream | Pause publishing, roll back upstream for re-verification, never publish silently |
-| External write fails | Retry once and cross-verify; if still failing, keep the local ledger, report the reason, leave no half-written state |
-| Final draft has unparseable embedded content (charts/image-with-text) | Mark as unparseable, request text extraction or manual confirmation |
-| Target channel unspecified | Default to generating all four channels and prompt |
+| 输入门禁不满足 | 停止；输出缺失项清单并提示先完成上游核验 |
+| 输出门禁出现 P0（退出码 2） | 不生成 manifest；列出每条 P0 及所在文件，修复后重跑 |
+| 下游发现上游未覆盖的新事实 | 暂停发布，回退上游重新核验，不得静默发布 |
+| 外部写入失败 | 先重试一次并交叉验证；仍失败则保留本地台账、报告原因，不留半写状态 |
+| 定稿含未解析的复杂内嵌内容（图表/带字图片） | 标记为不可解析，请求文本抽取或人工确认 |
+| 目标渠道未指定 | 默认生成全部四渠道并提示 |
 
 ## Output Format
 
@@ -149,56 +129,40 @@ Before any actual push, article-platform draft creation, or Notion write, **list
 ├── wechat_preview.html
 ├── linkedin-post.md
 ├── standalone.html
-├── archive-ledger.json        # append-style archive ledger
-└── package-manifest.json      # this publish package manifest (file paths + gate results)
+├── archive-ledger.json        # 追加式入库台账
+└── package-manifest.json      # 本次发布包清单（各文件路径 + 门禁结果）
 ```
 
-Gate report: P0/P1 list; when a P0 exists, explicitly mark "未通过、禁止发布 / failed, publishing forbidden".
+gate 报告：P0/P1 列表；有 P0 时明确标注"未通过、禁止发布"。
 
 ## References
 
-| Resource | Purpose |
-|----------|---------|
-| `references/wechat-style.md` | WeChat 135 inline-style spec and component styles |
-| `references/channel-contracts.md` | Output-format contracts per channel (validation basis) |
-| `templates/wechat-snippet.html` | WeChat fragment template |
-| `templates/linkedin-post.md` | LinkedIn post template |
-| `templates/standalone.html` | Standalone HTML single-page template |
-| `templates/archive-record.json` | Archive ledger entry template |
-| `templates/notion-mapping.example.json` | Notion mapping example (credentials via `NOTION_TOKEN` env var; database ID placeholder, never real value) |
-| `scripts/build_publish_package.py` | Organize artifacts, update ledger, output manifest |
-| `scripts/validate_publish_output.py` | Per-channel format-contract validation, outputs P0/P1 gate |
+| 资源 | 用途 |
+|------|------|
+| `references/wechat-style.md` | 微信 135 内联样式规范、组件样式代码 |
+| `references/channel-contracts.md` | 各渠道输出格式合约（校验规则依据） |
+| `templates/wechat-snippet.html` | 微信片段模板 |
+| `templates/linkedin-post.md` | LinkedIn 帖子模板 |
+| `templates/standalone.html` | 独立 HTML 单页模板 |
+| `templates/archive-record.json` | 入库台账条目模板 |
+| `templates/notion-mapping.example.json` | Notion 映射样例（凭据走 `NOTION_TOKEN` 环境变量，库 ID 占位符不写真实值） |
+| `scripts/build_publish_package.py` | 组织产物、更新台账、输出 manifest |
+| `scripts/validate_publish_output.py` | 各渠道格式合约校验，输出 P0/P1 gate |
 
 ## Verification
 
-- [ ] `validate_publish_output.py --enforce` exits 0 (no P0).
-- [ ] WeChat fragment contains `<section>`, ends with `<v2></v2>`, no `<script>`/`<style>`/outer class.
-- [ ] LinkedIn has no Markdown markers, no internal notes / pen-names.
-- [ ] Standalone HTML starts with `<!DOCTYPE html>`, no tech-circuit / glow / digital-grid motifs.
-- [ ] `package-manifest.json` generated for all channels, `archive-ledger.json` appended one entry.
-- [ ] User confirmation obtained before any external action; default dry-run.
+- [ ] 运行 `validate_publish_output.py --enforce`，退出码 0（无 P0）。
+- [ ] 微信片段含 `<section>`、文末 `<v2></v2>`、无 `<script>`/`<style>`/外层 class。
+- [ ] LinkedIn 无 Markdown 标记、无内部备注/笔名。
+- [ ] 独立 HTML 以 `<!DOCTYPE html>` 开头，无科技电路风/发光/数字网格。
+- [ ] `package-manifest.json` 各渠道均生成，`archive-ledger.json` 已追加一条。
+- [ ] 外部动作前已取得用户确认；默认 dry-run。
 
 ## Pitfalls
 
-- Treating an unreviewed draft as reviewed and publishing directly — must pass the input gate first.
-- WeChat asset accidentally gets `<style>`/outer `<div>`, then the 135 editor strips the styles on paste.
-- LinkedIn retains Markdown bold/list symbols or an internal pen-name — the platform won't render it or it leaks internal info.
-- Writing a real Notion database ID or credential in an example/template — always use placeholders and environment variables.
-- External write without readback verification, causing duplicate writes or half-written state.
-- Downstream silently adds a "new fact" that bypasses upstream verification — any new fact must roll back upstream.
-
----
-
-## 中文摘要（Chinese Summary）
-
-本 Skill 是**发布编排层**：把一篇已通过终检的定稿（如 `industry-deep-dive-pipeline` 的 `07-final.md`，或显式标记「已审核」的等价 Markdown）稳定转换为微信 / LinkedIn / 独立 HTML / 入库四类物料，并生成入库台账。
-
-**关键约束（双语要点 / Bilingual key points）：**
-
-- **输入门禁 Input gate**：必须提供 `final-check.json`（Gate B approved、红线 0、凭据/隐私 P0 0）或定稿头部显式「已审核」标记且用户确认；否则拒绝进入。
-- **零泄漏 Zero leakage**：发布物料中零对话痕迹、零流程元信息、零内部备注/笔名；作者笔名仅经 `PUBLISH_PEN_NAMES` 环境变量传入用于拦截，绝不硬编码。
-- **微信硬规则 WeChat hard rule**：全内联样式、`<section>` 包裹、文末 `<v2></v2>`；禁止 `<style>`/`<script>`/外联 class/外层 `<div>`。
-- **外部动作门禁 External-action gate**：任何推送、建草稿、写 Notion 默认 `--dry-run`，须列目标并取得用户确认，写后必须回读核验。
-- **凭据 Credentials**：只走环境变量（`NOTION_TOKEN` / `NOTION_DB_ID`），绝不硬编码。
-
-它不重复事实核验、原创性复核或跨材料审计，也不自动执行任何发布动作。
+- 把未审核稿当作已审核直接发布——必须先过输入门禁。
+- 微信物料误加 `<style>`/外层 `<div>`，粘贴进 135 编辑器后样式被剥离。
+- LinkedIn 残留 Markdown 加粗/列表符号或内部笔名，平台不渲染或泄漏内部信息。
+- 在 example/模板里写真实 Notion 库 ID 或凭据——一律用占位符与环境变量。
+- 外部写入未回读核验，导致重复写入或半写状态。
+- 下游悄悄补一句"新事实"绕过上游核验——任何新事实都要回退上游。
