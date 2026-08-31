@@ -1,9 +1,16 @@
 ---
+slug: content-publishing-suite-skill
+displayName: Content Publishing Suite
 name: content-publishing-suite
-description: This skill should be used when a fact-checked and compliance-approved final Markdown draft needs to be turned into multi-channel publishing assets — WeChat article (135-editor-compatible inline HTML), LinkedIn post, standalone responsive HTML page, and an archive ledger (local record plus optional Notion entry). It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish. Can optionally pair with a dedicated WeChat-layout skill if one is installed. Trigger keywords: 发布物料, 排版并入库, 多平台发布, 定稿发到微信, publishing suite, multi-channel publish, final draft to WeChat/LinkedIn, package for publishing.
+not_for:
+  - Fact-checking, originality review, or claim verification (use claim-to-source-auditor)
+  - Cross-material consistency audits across a finished document set (use cross-material-consistency-auditor)
+  - Writing, rewriting, or topic evaluation (use the upstream writing/review pipeline)
+  - Auto-publishing to any platform without explicit user confirmation
+description: This skill should be used when a fact-checked and compliance-approved final Markdown draft needs to be turned into multi-channel publishing assets — WeChat article (135-editor-compatible inline HTML), WeChat image-summary card (公众号发图/摘要图/图文卡/810×1080), LinkedIn post, standalone responsive HTML page, and an archive ledger (local record plus optional Notion entry). It only orchestrates publishing and format conversion; it does not repeat fact-checking and does not auto-publish. Can optionally pair with a dedicated WeChat-layout skill if one is installed. Trigger keywords: 发布物料, 排版并入库, 多平台发布, 定稿发到微信, 公众号发图, 摘要图, 图文卡, 810×1080, publishing suite, multi-channel publish, final draft to WeChat/LinkedIn, package for publishing.
 description_zh: 内容发布套件
 description_en: Content publishing suite
-version: 1.1.1
+version: "1.1.4"
 agent_created: true
 ---
 
@@ -52,7 +59,8 @@ read_only_upstream: true    # 不引入上游未覆盖的新事实
 
 | 渠道 | 产物 | 说明 |
 |------|------|------|
-| 微信 | `wechat_snippet.html`（可粘贴片段）+ `wechat_preview.html`（手机框预览） | 135 编辑器兼容内联样式；不自动建草稿 |
+| 微信长文 | `wechat_snippet.html`（可粘贴片段）+ `wechat_preview.html`（手机框预览） | 135 编辑器兼容内联样式；不自动建草稿 |
+| 微信发图摘要 | `wechat_summary_card.jpg`（810×1080）+ `wechat_summary_copy.md` | 长文二次分发物料：主题图重排、摘要、关键词和原文链接占位；不替代长文封面 |
 | LinkedIn | `linkedin-post.md` | hook + 正文 + 3-5 话题标签；中/英按目标读者 |
 | 独立 HTML | `standalone.html` | 响应式单页，含目录与参考链接 |
 | 入库 | `archive-ledger.json`（本地）+ 可选 Notion 记录 | 标题/渠道/时间/状态；可选 page ID 写入并回读 |
@@ -69,7 +77,8 @@ read_only_upstream: true    # 不引入上游未覆盖的新事实
 
 ### Step 2: [LLM] Generate per-channel assets
 
-- **微信**：依 `references/wechat-style.md` 将 Markdown 转为全内联 `<section>` HTML。标题 22px 居中、小标题 17px 加粗 `#1a3a5c`、正文 16px / 行高 1.8 / `#333`、关键句 `<strong style="color:#1a3a5c;">`、表格深蓝表头白字 + 斑马纹。文末必须加 `<v2></v2>`。绝不使用 `<style>`、`<script>`、外联 class、外层 `<div>` 容器。模板见 `templates/wechat-snippet.html`。
+- **微信长文**：依 `references/wechat-style.md` 将 Markdown 转为全内联 `<section>` HTML。标题 22px 居中、小标题 17px 加粗 `#1a3a5c`、正文 16px / 行高 1.8 / `#333`、关键句 `<strong style="color:#1a3a5c;">`、表格深蓝表头白字 + 斑马纹。文末必须加 `<v2></v2>`。绝不使用 `<style>`、`<script>`、外联 class、外层 `<div>` 容器。模板见 `templates/wechat-snippet.html`。
+- **微信发图摘要**：生成前必须加载 `tech-writing-pipeline`，并以其 **6.1「公众号发图摘要卡：固定骨架，有限自适应」**作为唯一完整视觉规范；本 skill 只负责编排、交付与台账，不能用本段摘要替代 6.1。同步生成 `wechat_summary_card.jpg`（810×1080、3:4）和 `wechat_summary_copy.md`。卡片必须执行 A/B/C/D 四区、56px 左右安全边距、左对齐阅读路径、上暖下冷、三色上限、一个主体结构加一个对照状态、主题行与一条最多三行的核心判断；仅能在主题隐喻、主体位置、同系列色盘微调、主题行和核心判断五项中自适应。不得把 2.35:1 长文封面硬裁或复用。文案应保留长文的判断闭环，而不是只写一句口号；包含短摘要、关键词/Hashtags、`【原文链接：待填】`和后台使用说明。图片不预制公众号账号水印，平台上传后的自动标识即可。
 - **LinkedIn**：依 `templates/linkedin-post.md`，取核心判断作 hook，正文压缩到 200-300 字，末尾 3-5 个话题标签。无 Markdown、无内部备注、无未公开数据、无流程元信息。
 - **独立 HTML**：依 `templates/standalone.html`，生成响应式单页，含标题/作者/日期/目录/正文/参考链接。平涂风格、大量留白、**绝对排除科技电路风、发光、数字网格**。
 - **入库台账**：追加一条记录到 `archive-ledger.json`（不存在则新建），字段见 `templates/archive-record.json`。
@@ -108,7 +117,9 @@ python3 {SKILL_DIR}/scripts/build_publish_package.py \
 4. 工作文档与发布物中人名一律用真实姓名或中性表达；作者内部笔名从 `PUBLISH_PEN_NAMES` 读取用于拦截，不硬编码进本 Skill。
 5. 任何外部动作（推送、建草稿、写 Notion）默认 `--dry-run`，必须先列目标并取得用户确认；写后必须回读核验。
 6. 凭据只走环境变量（Notion 用 `NOTION_TOKEN`、库 ID 用 `NOTION_DB_ID`；文章管理平台经既有 MCP/连接器），绝不硬编码。
-7. 脚本只读取用户指定的定稿、写入用户指定的输出目录；不引入网络外送。
+7. 微信发图摘要卡必须为 810×1080（3:4），且图与文案都围绕同一篇已审核长文；图中不重复添加公众号账号水印。台账需记录 `summary_card` 路径。
+8. 一旦交付包含微信发图摘要，必须先完整加载 `tech-writing-pipeline` 并逐项执行其 6.1；未加载或无法访问时，停止摘要卡制作并说明缺少的规范，不能凭本 skill 的简写规则自行补全。
+9. 脚本只读取用户指定的定稿、写入用户指定的输出目录；不引入网络外送。
 
 ## Failure Handling
 
@@ -127,6 +138,8 @@ python3 {SKILL_DIR}/scripts/build_publish_package.py \
 <output_dir>/
 ├── wechat_snippet.html
 ├── wechat_preview.html
+├── wechat_summary_card.jpg
+├── wechat_summary_copy.md
 ├── linkedin-post.md
 ├── standalone.html
 ├── archive-ledger.json        # 追加式入库台账
@@ -153,6 +166,7 @@ gate 报告：P0/P1 列表；有 P0 时明确标注"未通过、禁止发布"。
 
 - [ ] 运行 `validate_publish_output.py --enforce`，退出码 0（无 P0）。
 - [ ] 微信片段含 `<section>`、文末 `<v2></v2>`、无 `<script>`/`<style>`/外层 class。
+- [ ] 微信发图摘要卡为 810×1080（3:4）、主题图为竖幅重排而非横版硬裁、无重复账号水印；摘要副本含关键词和原文链接占位。
 - [ ] LinkedIn 无 Markdown 标记、无内部备注/笔名。
 - [ ] 独立 HTML 以 `<!DOCTYPE html>` 开头，无科技电路风/发光/数字网格。
 - [ ] `package-manifest.json` 各渠道均生成，`archive-ledger.json` 已追加一条。
@@ -166,3 +180,6 @@ gate 报告：P0/P1 列表；有 P0 时明确标注"未通过、禁止发布"。
 - 在 example/模板里写真实 Notion 库 ID 或凭据——一律用占位符与环境变量。
 - 外部写入未回读核验，导致重复写入或半写状态。
 - 下游悄悄补一句"新事实"绕过上游核验——任何新事实都要回退上游。
+- 把横版封面当公众号发图摘要卡——长文封面是 2.35:1；发图摘要是 810×1080 的独立二次分发物料，需主题图重排、长文摘要、关键词和原文链接占位。
+- 在摘要图里再加“公众号·账号名”水印——上传后平台会自动显示账号标识，设计图不重复加，避免视觉重叠。
+- 只加载发布套件并按其中的短说明制作摘要卡——这会遗漏 A/B/C/D 分区、固定文字层级、有限自适应边界和手机缩略验收。只要交付摘要卡，就必须额外完整加载 `tech-writing-pipeline` 的 6.1；发布套件不再作为摘要卡视觉规范的替代品。
